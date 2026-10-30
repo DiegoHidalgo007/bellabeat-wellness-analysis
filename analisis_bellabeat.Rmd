@@ -1,0 +1,173 @@
+---
+title: "Caso de Estudio 2: Bellabeat - Análisis de Datos de Bienestar Inteligente"
+subtitle: "Certificado Profesional de Análisis de Datos de Google (Google Data Analytics Capstone)"
+author: "Diego Hidalgo"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: flatly
+    highlight: tango
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.width = 10, fig.height = 6)
+```
+
+# Introducción y Pregunta de Negocio (Fase: Ask)
+
+**Bellabeat** es un fabricante de productos tecnológicos de alta gama enfocados en la salud y bienestar de las mujeres (Leaf, Time, Spring y la Bellabeat App).
+
+La cofundadora y directora creativa, **Urška Sršen**, busca responder las siguientes preguntas clave:
+1. ¿Cuáles son algunas de las tendencias actuales en el uso de dispositivos inteligentes (smart devices)?
+2. ¿Cómo podrían aplicarse estas tendencias a los clientes de Bellabeat?
+3. ¿Cómo pueden estas tendencias orientar la estrategia de marketing de Bellabeat?
+
+---
+
+# Preparación del Entorno y Carga de Datos (Fase: Prepare)
+
+Utilizamos el conjunto de datos público de FitBit Fitness Tracker Data (Fitabase) que contiene registros de 33 usuarios durante 30 días (abril a mayo de 2016).
+
+```{r cargar_librerias}
+# Carga de librerías del ecosistema Tidyverse
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(knitr)
+```
+
+```{r cargar_datos}
+# Cargar datos limpios y agregados
+resumen_metricas <- read_csv("reportes_resumen/resumen_general_metricas.csv")
+pasos_semana <- read_csv("reportes_resumen/pasos_por_dia_semana.csv")
+pasos_hora <- read_csv("reportes_resumen/pasos_por_hora.csv")
+segmentacion <- read_csv("reportes_resumen/segmentacion_usuarios.csv")
+datos_detallados <- read_csv("reportes_resumen/datos_detallados_actividad_sueno.csv")
+
+# Ordenar días de la semana
+dias_orden <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+dias_espanol <- c("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")
+pasos_semana$DayOfWeek <- factor(pasos_semana$DayOfWeek, levels = dias_orden, labels = dias_espanol)
+```
+
+---
+
+# Exploración y Métricas Globales (Fase: Process & Analyze)
+
+```{r tabla_kpis}
+kable(resumen_metricas, caption = "Métricas Clave de la Muestra Analizada (33 Usuarios)")
+```
+
+### Hallazgo Fundamental:
+- **33 usuarios** registraron actividad diaria, pero **solo 24 usuarios** registraron datos de sueño.
+- **9 usuarios (27.3%)** nunca usaron el dispositivo para dormir, lo que evidencia la incomodidad de los relojes convencionales en la muñeca durante la noche.
+
+---
+
+# Visualizaciones de Alto Impacto con ggplot2
+
+## 1. Segmentación de Usuarios por Nivel de Actividad
+
+```{r grafico_segmentacion}
+ggplot(segmentacion, aes(x = reorder(tipo_usuario, cantidad_usuarios), y = cantidad_usuarios, fill = tipo_usuario)) +
+  geom_col(show.legend = FALSE, width = 0.6) +
+  geom_text(aes(label = paste0(cantidad_usuarios, " (", porcentaje_usuarios, "%)")), 
+            hjust = -0.1, size = 4.5, fontface = "bold") +
+  coord_flip() +
+  scale_fill_brewer(palette = "Set2") +
+  scale_y_continuous(limits = c(0, 12)) +
+  labs(
+    title = "Segmentación de Usuarios según Pasos Promedio Diarios",
+    subtitle = "El 51.5% de los usuarios camina menos de 7.500 pasos al día (Sedentarios o Baja Actividad)",
+    x = NULL,
+    y = "Cantidad de Usuarios (Total = 33)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", color = "#2c3e50"),
+    panel.grid.minor = element_blank()
+  )
+```
+
+## 2. Pasos Promedio por Día de la Semana
+
+```{r grafico_semana}
+ggplot(pasos_semana, aes(x = DayOfWeek, y = TotalSteps, fill = TotalSteps)) +
+  geom_col(show.legend = FALSE, width = 0.65) +
+  geom_hline(yintercept = 10000, linetype = "dashed", color = "#e74c3c", linewidth = 1) +
+  annotate("text", x = 2, y = 10300, label = "Meta OMS (10.000 pasos)", color = "#e74c3c", fontface = "bold") +
+  scale_fill_gradient(low = "#85c1e9", high = "#1b4f72") +
+  labs(
+    title = "Volumen de Actividad Física a lo Largo de la Semana",
+    subtitle = "Martes y Sábados alcanzan el pico de actividad; Domingos presentan la mayor caída",
+    x = "Día de la Semana",
+    y = "Pasos Promedio Diarios"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(plot.title = element_text(face = "bold", color = "#2c3e50"))
+```
+
+## 3. Patrón de Actividad por Hora: El "Bajón Laboral" de las 15:00 hrs
+
+```{r grafico_hora}
+ggplot(pasos_hora, aes(x = Hour, y = StepTotal)) +
+  geom_area(fill = "#5dade2", alpha = 0.4) +
+  geom_line(color = "#1b4f72", linewidth = 1.2) +
+  geom_point(color = "#1b4f72", size = 2) +
+  annotate("rect", xmin = 17, xmax = 19, ymin = 0, ymax = 650, alpha = 0.2, fill = "#27ae60") +
+  annotate("text", x = 18, y = 620, label = "Pico Post-Laboral\n(17:00 - 19:00 hrs)", color = "#1e8449", fontface = "bold") +
+  annotate("point", x = 15, y = 406, color = "#e74c3c", size = 4) +
+  annotate("text", x = 15, y = 350, label = "Bajón de las 15:00 hrs\n(406 pasos)", color = "#c0392b", fontface = "bold") +
+  scale_x_continuous(breaks = seq(0, 23, 2)) +
+  labs(
+    title = "Distribución Horaria del Movimiento (24 Horas)",
+    subtitle = "Oportunidad clave para notificaciones push en la tarde antes de la caída de energía",
+    x = "Hora del Día (Formato 24h)",
+    y = "Pasos Promedio por Hora"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(plot.title = element_text(face = "bold", color = "#2c3e50"))
+```
+
+## 4. Relación Sedentarismo vs Sueño: Dispersión con Regresión
+
+```{r grafico_dispersion}
+ggplot(datos_detallados, aes(x = horas_sedentarias, y = horas_dormidas, color = grupo_sedentarismo)) +
+  geom_point(alpha = 0.7, size = 3) +
+  geom_smooth(method = "lm", color = "#e74c3c", se = TRUE, linetype = "solid", inherit.aes = FALSE, 
+              aes(x = horas_sedentarias, y = horas_dormidas)) +
+  scale_color_manual(values = c("Alto Sedentarismo (>= 16h)" = "#e74c3c", "Sedentarismo Moderado (< 16h)" = "#2980b9")) +
+  labs(
+    title = "Horas Sedentarias vs. Horas de Sueño Efectivo",
+    subtitle = "Correlación negativa estadísticamente comprobada (a mayor tiempo sentado, menos horas de sueño)",
+    x = "Horas Sedentarias en el Día",
+    y = "Horas Dormidas Efectivas",
+    color = "Grupo de Sedentarismo"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", color = "#2c3e50"),
+    legend.position = "bottom"
+  )
+```
+
+---
+
+# Conclusiones y Recomendaciones Estratégicas (Fase: Act)
+
+### 1. Ventaja Competitiva de Bellabeat Leaf frente a Relojes Inteligentes
+- **El Hallazgo:** El 27.3% de los usuarios no registra sueño en Fitbit porque los smartwatches tradicionales son toscos y pesados para dormir.
+- **La Acción:** Posicionar el **Bellabeat Leaf** (clip o collar ligero sin pantalla agresiva) como el rastreador de sueño más ergonómico y discreto del mercado.
+
+### 2. Notificaciones Inteligentes a las 14:45 hrs
+- **El Hallazgo:** Las 15:00 hrs es la hora laboral con menor movimiento del día.
+- **La Acción:** Enviar micro-notificaciones desde la Bellabeat App a las 14:45 hrs invitando a una caminata de 5 minutos, pausa activa o hidratación (Spring water bottle).
+
+### 3. Programa Gradual de Pasos para el 51.5% de Usuarias
+- **El Hallazgo:** Más de la mitad de las usuarias camina menos de 7.500 pasos.
+- **La Acción:** No imponer una meta inalcanzable de 10.000 pasos desde el día 1; crear retos escalonados (+500 pasos cada semana) acompañados de contenido de bienestar en la app.

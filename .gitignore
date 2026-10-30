@@ -1,0 +1,9 @@
+# Ignorar datos crudos pesados
+archive/
+archive.zip
+*.zip
+*.docx
+
+# Ignorar archivos temporales
+__pycache__/
+*.pyc

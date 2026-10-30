@@ -1,0 +1,5 @@
+﻿tipo_usuario,cantidad_usuarios,porcentaje_usuarios,pasos_grupo
+1. Sedentario (< 5.000 pasos),8,24.2,2936
+2. Baja Actividad (5.000 - 7.499),9,27.3,6567
+3. Algo Activo (7.500 - 9.999),9,27.3,8682
+4. Muy Activo (>= 10.000 pasos),7,21.2,12488
